@@ -3,7 +3,6 @@ web3==6.15.1
 eth-account==0.11.0
 
 # Async Support
-asyncio==3.4.3
 aiohttp==3.9.3
 aiofiles==23.2.1
 
@@ -12,8 +11,8 @@ requests==2.31.0
 httpx==0.26.0
 
 # Data Processing
-pandas==2.2.1
-numpy==1.26.4
+pandas>=2.0.0,<2.3.0
+numpy>=1.24.0,<1.27.0
 
 # API Framework
 fastapi==0.110.0

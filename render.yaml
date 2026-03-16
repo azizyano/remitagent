@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: remitagent
+    runtime: python
+    pythonVersion: 3.11.8
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py --mode monitor
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: CELO_RPC_URL
+        sync: false
+      - key: CELO_PRIVATE_KEY
+        sync: false
+      - key: CELO_WALLET_ADDRESS
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+    healthCheckPath: /health
