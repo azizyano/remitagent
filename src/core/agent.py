@@ -82,12 +82,14 @@ class RemitAgent:
         self.notifier = TelegramNotifier()
         
         # Register callbacks for remote control
-        self.notifier.register_stop_callback(self._handle_remote_stop)
+        self.notifier.register_stop_callback(self._handle_trading_pause)
+        self.notifier.register_resume_callback(self._handle_trading_resume)
         self.notifier.register_status_callback(self.get_status)
         
         # Current plan and state
         self.current_plan: Optional[Plan] = None
         self.last_adaptation: Optional[datetime] = None
+        self._trading_paused = False
         
         # Statistics
         self.stats = {
@@ -155,11 +157,9 @@ class RemitAgent:
         
         while self._running:
             try:
-                # Check emergency stop
-                if config.is_emergency_stop():
-                    logger.critical("🚨 Emergency stop detected, halting agent")
-                    await self.notifier.send_emergency_stop()
-                    break
+                # Log trading status if paused
+                if self._trading_paused:
+                    logger.info("🛑 Trading is paused - monitoring only mode")
                 
                 loop_count += 1
                 
@@ -544,9 +544,14 @@ class RemitAgent:
     
     async def _safety_checks(self, pair: str, amount: float) -> bool:
         """Pre-execution safety checks."""
-        # Check emergency stop
+        # Check if trading is paused (via Telegram command)
+        if self._trading_paused:
+            logger.warning("[SAFETY] Trading is paused - skipping execution")
+            return False
+        
+        # Check emergency stop file
         if config.is_emergency_stop():
-            logger.critical("[SAFETY] Emergency stop is active")
+            logger.warning("[SAFETY] Emergency stop file exists - skipping execution")
             return False
         
         # Check if wallet is configured
@@ -776,6 +781,7 @@ class RemitAgent:
         """Get current agent status including agentic state."""
         return {
             "running": self._running,
+            "trading_paused": self._trading_paused,
             "threshold": self.threshold,
             "adaptive_threshold": self.memory.strategy.adaptive_threshold,
             "interval": self.interval,
@@ -789,10 +795,15 @@ class RemitAgent:
             "last_adaptation": self.last_adaptation.isoformat() if self.last_adaptation else None
         }
     
-    def _handle_remote_stop(self):
-        """Handle remote stop command from Telegram."""
-        logger.critical("Remote stop command received from Telegram")
-        self._running = False
+    def _handle_trading_pause(self):
+        """Handle trading pause command from Telegram (stops trading but keeps monitoring)."""
+        logger.critical("Trading pause command received from Telegram")
+        self._trading_paused = True
+    
+    def _handle_trading_resume(self):
+        """Handle trading resume command from Telegram (resumes trading)."""
+        logger.critical("Trading resume command received from Telegram")
+        self._trading_paused = False
     
     async def stop(self):
         """Stop the monitoring loop and save state."""

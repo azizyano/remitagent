@@ -3,6 +3,7 @@ Configuration module for RemitAgent.
 Loads and validates environment variables with type safety.
 """
 import os
+import tempfile
 from dataclasses import dataclass, field
 from typing import List, Optional
 from pathlib import Path
@@ -101,7 +102,7 @@ class SafetyConfig:
     max_trade_size_usd: float = field(default_factory=lambda: float(os.getenv("MAX_TRADE_SIZE_USD", "1000")))
     min_liquidity_depth: float = field(default_factory=lambda: float(os.getenv("MIN_LIQUIDITY_DEPTH", "10000")))
     cooldown_minutes: int = field(default_factory=lambda: int(os.getenv("COOLDOWN_MINUTES", "15")))
-    emergency_stop_file: str = field(default_factory=lambda: os.getenv("EMERGENCY_STOP_FILE", "/tmp/remitagent_stop"))
+    emergency_stop_file: str = field(default_factory=lambda: os.getenv("EMERGENCY_STOP_FILE", os.path.join(tempfile.gettempdir(), "remitagent_stop")))
 
 
 class Config:

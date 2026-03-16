@@ -6,6 +6,7 @@ import asyncio
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timedelta
 from collections import deque
+from pathlib import Path
 
 from telegram import Bot, Update
 from telegram.constants import ParseMode
@@ -36,6 +37,7 @@ class TelegramNotifier:
         
         # Command handlers
         self._stop_callback: Optional[Callable] = None
+        self._resume_callback: Optional[Callable] = None
         self._status_callback: Optional[Callable[[], Dict[str, Any]]] = None
         self._is_running = False
         
@@ -48,8 +50,12 @@ class TelegramNotifier:
         return self.bot is not None
     
     def register_stop_callback(self, callback: Callable):
-        """Register callback for emergency stop command."""
+        """Register callback for emergency stop command (pauses trading)."""
         self._stop_callback = callback
+    
+    def register_resume_callback(self, callback: Callable):
+        """Register callback for resume command (resumes trading)."""
+        self._resume_callback = callback
     
     def register_status_callback(self, callback: Callable[[], Dict[str, Any]]):
         """Register callback for status command."""
@@ -70,6 +76,7 @@ class TelegramNotifier:
             self.application.add_handler(CommandHandler("status", self._cmd_status))
             self.application.add_handler(CommandHandler("stop", self._cmd_stop))
             self.application.add_handler(CommandHandler("emergency", self._cmd_stop))
+            self.application.add_handler(CommandHandler("resume", self._cmd_resume))
             self.application.add_handler(CommandHandler("stats", self._cmd_stats))
             
             # Start the bot
@@ -79,7 +86,7 @@ class TelegramNotifier:
             
             self._is_running = True
             logger.info("Telegram command listener started")
-            logger.info("Available commands: /start, /help, /status, /stop, /emergency, /stats")
+            logger.info("Available commands: /start, /help, /status, /stop, /emergency, /resume, /stats")
             
         except Exception as e:
             logger.error(f"Failed to start Telegram command listener: {e}")
@@ -104,7 +111,8 @@ class TelegramNotifier:
             "You can control the agent with these commands:\n\n"
             "📊 <b>/status</b> - Check agent status\n"
             "📈 <b>/stats</b> - View trading statistics\n"
-            "🛑 <b>/stop</b> or <b>/emergency</b> - Emergency stop\n"
+            "🛑 <b>/stop</b> or <b>/emergency</b> - Pause trading (monitoring continues)\n"
+            "▶️ <b>/resume</b> - Resume trading\n"
             "❓ <b>/help</b> - Show this help message\n\n"
             "The agent will automatically send notifications for:\n"
             "• Trading opportunities\n"
@@ -126,9 +134,11 @@ class TelegramNotifier:
         if self._status_callback:
             try:
                 status = self._status_callback()
+                trading_status = "🛑 PAUSED" if status.get('trading_paused') else "✅ Active"
                 message = (
                     "📊 <b>Agent Status</b>\n\n"
                     f"<b>Running:</b> {'Yes' if status.get('running') else 'No'}\n"
+                    f"<b>Trading:</b> {trading_status}\n"
                     f"<b>Threshold:</b> {status.get('threshold', 'N/A')}%\n"
                     f"<b>Adaptive Threshold:</b> {status.get('adaptive_threshold', 'N/A'):.2f}%\n"
                     f"<b>Interval:</b> {status.get('interval', 'N/A')}s\n"
@@ -156,14 +166,15 @@ class TelegramNotifier:
         
         # Send immediate confirmation
         await update.message.reply_text(
-            "🚨 <b>EMERGENCY STOP INITIATED</b>\n\n"
-            "Stopping the agent now...",
+            "🚨 <b>TRADING PAUSED</b>\n\n"
+            "All trade execution is now paused.\n"
+            "Monitoring and notifications continue.",
             parse_mode=ParseMode.HTML
         )
         
-        logger.critical("Emergency stop triggered via Telegram command")
+        logger.critical("Trading pause triggered via Telegram command")
         
-        # Trigger the stop callback
+        # Trigger the stop callback (pauses trading)
         if self._stop_callback:
             try:
                 self._stop_callback()
@@ -173,11 +184,54 @@ class TelegramNotifier:
         # Also create emergency stop file as backup
         try:
             stop_file = config.safety.emergency_stop_file
+            Path(stop_file).parent.mkdir(parents=True, exist_ok=True)
             with open(stop_file, 'w') as f:
                 f.write(f"Emergency stop triggered via Telegram at {datetime.utcnow().isoformat()}\n")
             logger.info(f"Emergency stop file created: {stop_file}")
         except Exception as e:
             logger.error(f"Failed to create emergency stop file: {e}")
+    
+    async def _cmd_resume(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /resume command - remove emergency stop file."""
+        if not self._is_authorized(update.effective_chat.id):
+            return
+        
+        stop_file = Path(config.safety.emergency_stop_file)
+        
+        if not stop_file.exists():
+            await update.message.reply_text(
+                "✅ <b>Agent is already active</b>\n\n"
+                "No emergency stop file found. The agent is running normally.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+        
+        try:
+            stop_file.unlink()
+            logger.critical("Emergency stop cleared via Telegram command - agent resumed")
+            
+            # Trigger the resume callback
+            if self._resume_callback:
+                try:
+                    self._resume_callback()
+                except Exception as e:
+                    logger.error(f"Error in resume callback: {e}")
+            
+            await update.message.reply_text(
+                "▶️ <b>TRADING RESUMED</b>\n\n"
+                "Emergency stop file has been removed.\n"
+                "Trading is now enabled. Monitoring continues.",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.error(f"Failed to remove emergency stop file: {e}")
+            await update.message.reply_text(
+                f"❌ <b>Failed to resume agent</b>\n\n"
+                f"Error: <code>{e}</code>\n\n"
+                f"Please manually remove the file:\n"
+                f"<code>{stop_file}</code>",
+                parse_mode=ParseMode.HTML
+            )
     
     def _is_authorized(self, chat_id: int) -> bool:
         """Check if the chat ID is authorized."""

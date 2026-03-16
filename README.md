@@ -1,15 +1,15 @@
-# RemitAgent 🌍💸
+# RemitAgent 
 
 An autonomous agent that monitors remittance corridors on Celo, detects optimal swap rates between DEX liquidity and Mento FPMM rates, and executes trades when spreads exceed user-defined thresholds. Features Telegram remote control for emergency stops and real-time notifications.
 
-## 🎯 Why This Wins
+##  Why This Wins
 
 - **Unique to Celo**: Mento FPMMs provide real-world FX rates on-chain (0.05-0.3% cost vs 3-7% traditional)
 - **Real utility**: Addresses $4B annual remittance fee loss in Africa
 - **Technical showcase**: Combines subgraphs, oracles, DEX aggregation, and agent autonomy
 - **Remote Control**: Stop the agent from anywhere via Telegram commands
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -30,7 +30,7 @@ An autonomous agent that monitors remittance corridors on Celo, detects optimal 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Installation
 
@@ -101,7 +101,7 @@ python main.py --mode backtest --days 7
 python main.py --mode dashboard --port 8000
 ```
 
-## 🤖 Telegram Remote Control
+##  Telegram Remote Control
 
 Once the agent is running, control it remotely via Telegram:
 
@@ -111,21 +111,46 @@ Once the agent is running, control it remotely via Telegram:
 | `/help` | Show all commands |
 | `/status` | Check agent status and statistics |
 | `/stats` | View trading statistics |
-| `/stop` | **Emergency stop - Stops the agent immediately** |
+| `/stop` | **Pause trading** - Stops trade execution (monitoring continues) |
 | `/emergency` | Same as `/stop` |
+| `/resume` | **Resume trading** - Re-enable trade execution |
 
-### Emergency Stop Example
+### Pause & Resume Trading
 
-If you see the agent making bad trades:
+The `/stop` command pauses **trade execution only** - the agent continues monitoring markets and sending Telegram notifications about opportunities.
+
+**Pause trading:**
+
+If you see the agent making bad trades or want to temporarily halt execution:
 
 1. Open Telegram on your phone
 2. Find your bot chat
-3. Send: `/stop`
-4. Agent stops immediately and sends confirmation
+3. Send: `/stop` or `/emergency`
+4. Trading is paused - you'll see: "🛑 Trading is paused - monitoring only mode"
+
+**What continues during pause:**
+- ✅ Market monitoring and analysis
+- ✅ Opportunity detection and alerts
+- ✅ Daily summaries and notifications
+- ✅ Status commands (`/status`, `/stats`)
+
+**What stops during pause:**
+- ❌ Trade execution (no real transactions)
+
+**Resume trading:**
+
+Once you're ready to resume:
+
+1. Send: `/resume`
+2. Trading is re-enabled immediately
+3. Next opportunity will be executed if checks pass
+
+**Check status:**
+Use `/status` anytime to see if trading is active or paused.
 
 See [TELEGRAM_REMOTE_CONTROL.md](TELEGRAM_REMOTE_CONTROL.md) for detailed setup and troubleshooting.
 
-## 📊 Supported Trading Pairs
+##  Supported Trading Pairs
 
 ### Default Pairs (3)
 - `cUSD-cEUR` - USD to Euro
@@ -145,7 +170,7 @@ Includes:
 
 See [POOL_EXPANSION_GUIDE.md](POOL_EXPANSION_GUIDE.md) for recommendations on expanding pairs.
 
-## 📊 API Endpoints
+##  API Endpoints
 
 When running in dashboard mode:
 
@@ -158,17 +183,19 @@ When running in dashboard mode:
 | `/simulate` | POST | Dry-run trade calculation |
 | `/health` | GET | Health check |
 
-## 🛡️ Safety Features
+##  Safety Features
 
 - **Slippage Protection**: Max 0.5% slippage on any trade
 - **Trade Size Limit**: Max $1,000 per trade (configurable)
 - **Liquidity Check**: Minimum $10,000 pool TVL
 - **Cooldown Period**: 15 minutes between trades on same pair
-- **Emergency Stop**: Telegram command or touch file to halt
+- **Trading Pause**: Telegram `/stop` command pauses trade execution (monitoring continues)
+- **Trading Resume**: Telegram `/resume` command re-enables trade execution
+- **Emergency Stop File**: Touch file to halt trading (cross-platform temp directory)
 - **Gas Price Check**: Ensure reasonable gas costs
-- **Remote Control**: Stop the agent from anywhere via Telegram
+- **Remote Control**: Pause/resume trading from anywhere via Telegram
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Run all tests
@@ -181,7 +208,7 @@ pytest tests/test_opportunities.py -v
 python test_telegram.py
 ```
 
-## 🔧 Project Structure
+##  Project Structure
 
 ```
 remitagent/
@@ -214,7 +241,7 @@ remitagent/
 └── TELEGRAM_REMOTE_CONTROL.md    # Remote control documentation
 ```
 
-## 💡 How It Works
+##  How It Works
 
 1. **Data Collection**: Fetches rates from Mento FPMMs, Uniswap V3, 0x API, and off-chain FX sources
 2. **Opportunity Detection**: Compares rates to find spreads above threshold
@@ -223,18 +250,18 @@ remitagent/
 5. **Notification**: Sends Telegram alerts for opportunities, trades, and daily summaries
 6. **Remote Control**: Listens for Telegram commands to stop the agent or check status
 
-## 🔗 Useful Links
+##  Useful Links
 
 - [Celo Explorer](https://celoscan.io)
 - [Mento Protocol Docs](https://docs.mento.org)
 - [Uniswap V3 Subgraph](https://thegraph.com/explorer)
 - [0x API Docs](https://0x.org/docs)
 
-## ⚠️ Disclaimer
+##  Disclaimer
 
 This is experimental software for hackathon demonstration. Use at your own risk. Always test with small amounts first. Never commit private keys to git.
 
-## 📄 License
+##  License
 
 MIT License - See LICENSE file for details.
 
