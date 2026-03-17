@@ -1,5 +1,5 @@
-# Render.com deployment configuration using Docker
-# This avoids Python 3.14 and build issues with pydantic/pandas
+# Render.com deployment configuration
+# Uses Docker with Python 3.11 to avoid Python 3.14 build issues
 services:
   - type: web
     name: remitagent

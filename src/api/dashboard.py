@@ -253,10 +253,47 @@ def create_app(agent_instance=None) -> FastAPI:
         """Health check endpoint."""
         return {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "agent_running": _agent_instance.is_running if _agent_instance else False
         }
     
+    @app.on_event("startup")
+    async def startup_event():
+        """Start agent monitoring in background on startup."""
+        global _agent_instance
+        if _agent_instance is None:
+            try:
+                from src.core.agent import RemitAgent
+                _agent_instance = RemitAgent()
+                logger.info("Agent instance created in startup")
+            except Exception as e:
+                logger.error(f"Failed to create agent: {e}")
+                return
+        
+        # Start monitoring in background
+        if _agent_instance and not _agent_instance.is_running:
+            import asyncio
+            asyncio.create_task(_run_agent_monitoring())
+            logger.info("Agent monitoring started in background")
+    
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        """Stop agent on shutdown."""
+        global _agent_instance
+        if _agent_instance and _agent_instance.is_running:
+            await _agent_instance.stop()
+            logger.info("Agent stopped on shutdown")
+    
     return app
+
+
+async def _run_agent_monitoring():
+    """Run agent monitoring loop in background."""
+    global _agent_instance
+    try:
+        await _agent_instance.monitoring_loop()
+    except Exception as e:
+        logger.error(f"Agent monitoring error: {e}")
 
 
 def cache_opportunity(opportunity: Dict[str, Any]):

@@ -1,28 +1,27 @@
-# Use official Python 3.11 image (slim for smaller size)
+# Use official Python 3.11 image
 FROM python:3.11-slim-bookworm
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for building packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install build tools first
+# Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements first (for better Docker caching)
+# Copy requirements first (better Docker caching)
 COPY requirements.txt .
 
-# Install Python dependencies
-# Install numpy first to help with pandas build
+# Install dependencies (numpy first to help pandas)
 RUN pip install --no-cache-dir numpy==1.26.4 && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy application code
 COPY . .
 
 # Create data directory
@@ -31,10 +30,10 @@ RUN mkdir -p data
 # Expose port
 EXPOSE 8000
 
-# Set environment variables
+# Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Run the agent
-CMD ["python", "main.py", "--mode", "monitor"]
+# Use dashboard mode - runs both API server (for health checks) and agent monitoring
+CMD ["python", "main.py", "--mode", "dashboard", "--port", "8000"]

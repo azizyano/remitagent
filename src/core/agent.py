@@ -103,6 +103,11 @@ class RemitAgent:
         
         self._running = False
     
+    @property
+    def is_running(self) -> bool:
+        """Check if agent is currently running."""
+        return self._running
+    
     def _parse_pairs(self, pairs_list: List[str]) -> List[Dict[str, str]]:
         """Parse target pairs from config."""
         parsed = []
