@@ -1,13 +1,19 @@
+# Render.com deployment configuration
+# Option 1: Using Python native runtime (may have build issues with pandas)
 services:
   - type: web
     name: remitagent
     runtime: python
-    pythonVersion: 3.11.8
-    buildCommand: pip install -r requirements.txt
+    plan: starter
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: python main.py --mode monitor
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.8
+        value: "3.11"
+      - key: PORT
+        value: "8000"
       - key: CELO_RPC_URL
         sync: false
       - key: CELO_PRIVATE_KEY
@@ -19,3 +25,24 @@ services:
       - key: TELEGRAM_CHAT_ID
         sync: false
     healthCheckPath: /health
+
+# Option 2: Using Docker (more reliable - uncomment below and comment out above)
+# services:
+#   - type: web
+#     name: remitagent
+#     runtime: docker
+#     plan: starter
+#     envVars:
+#       - key: PORT
+#         value: "8000"
+#       - key: CELO_RPC_URL
+#         sync: false
+#       - key: CELO_PRIVATE_KEY
+#         sync: false
+#       - key: CELO_WALLET_ADDRESS
+#         sync: false
+#       - key: TELEGRAM_BOT_TOKEN
+#         sync: false
+#       - key: TELEGRAM_CHAT_ID
+#         sync: false
+#     healthCheckPath: /health

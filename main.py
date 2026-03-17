@@ -156,6 +156,9 @@ async def run_backtest_mode(agent: RemitAgent, days: int):
 
 def run_dashboard_mode(port: int, agent: Optional[RemitAgent] = None):
     """Run the dashboard API server."""
+    import nest_asyncio
+    nest_asyncio.apply()
+    
     app = create_app(agent)
     
     logger.info(f"Starting dashboard on http://localhost:{port}")
@@ -201,8 +204,9 @@ async def main():
             await run_backtest_mode(agent, args.days)
             
         elif args.mode == "dashboard":
-            # Dashboard is synchronous (blocking)
+            # Dashboard runs in its own loop - don't run agent.stop() after
             run_dashboard_mode(args.port, agent)
+            return  # Skip the finally block's agent.stop()
             
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
@@ -210,7 +214,9 @@ async def main():
         logger.error(f"Error: {e}")
         sys.exit(1)
     finally:
-        await agent.stop()
+        # Don't stop agent if in dashboard mode (already returned)
+        if args.mode != "dashboard":
+            await agent.stop()
 
 
 if __name__ == "__main__":
